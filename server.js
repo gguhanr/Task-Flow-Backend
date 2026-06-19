@@ -24,9 +24,6 @@ if (fs.existsSync(envPath)) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI =
-  process.env.MONGO_URI ||
-  'mongodb+srv://tesk-manager-user:B0A0L0A1@cluster0.bknpanh.mongodb.net/taskmanager?retryWrites=true&w=majority&appName=Cluster0';
-
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
