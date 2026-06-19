@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TaskFlow — Task Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:#0f1117; --surface:#1a1d27; --surface2:#222536; --border:#2e3147;
+  --accent:#6c63ff; --accent-soft:rgba(108,99,255,.15); --accent-hover:#8a84ff;
+  --text:#e8eaf6; --text-muted:#7b7f9e; --text-dim:#4a4e6a;
+  --green:#4ade80; --green-soft:rgba(74,222,128,.12);
+  --yellow:#fbbf24; --yellow-soft:rgba(251,191,36,.12);
+  --red:#f87171; --red-soft:rgba(248,113,113,.12);
+  --blue:#60a5fa; --blue-soft:rgba(96,165,250,.12);
+  --radius:10px; --radius-sm:6px; --shadow:0 4px 24px rgba(0,0,0,.4);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+.app{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);padding:24px 16px;display:flex;flex-direction:column;gap:32px;position:fixed;top:0;left:0;height:100vh;overflow-y:auto}
+.logo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700;padding:4px 8px}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),#a78bfa);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.nav-section label{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:0 8px;display:block;margin-bottom:6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-sm);cursor:pointer;color:var(--text-muted);font-weight:500;transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:inherit;font-size:14px}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-soft);color:var(--accent)}
+.nav-badge{margin-left:auto;background:var(--surface2);color:var(--text-muted);font-size:11px;font-weight:600;padding:1px 7px;border-radius:20px;font-family:'JetBrains Mono',monospace}
+.nav-item.active .nav-badge{background:var(--accent);color:#fff}
+.main{margin-left:240px;flex:1;padding:32px;max-width:1200px}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px}
+.header-left h1{font-size:22px;font-weight:700}
+.header-left p{color:var(--text-muted);font-size:13px;margin-top:2px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-ghost{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--text-dim)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.stat-label{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.stat-value{font-size:28px;font-weight:700;font-family:'JetBrains Mono',monospace}
+.stat-card.total .stat-value{color:var(--accent)}
+.stat-card.todo .stat-value{color:var(--blue)}
+.stat-card.progress .stat-value{color:var(--yellow)}
+.stat-card.done .stat-value{color:var(--green)}
+.toolbar{display:flex;gap:10px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap input{width:100%;padding:9px 14px 9px 38px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;font-size:13px}
+.search-wrap input:focus{outline:none;border-color:var(--accent)}
+.search-wrap::before{content:'⌕';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:18px;pointer-events:none}
+select{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;font-size:13px;cursor:pointer}
+.view-toggle{display:flex;gap:4px}
+.view-btn{padding:8px 12px;border:1px solid var(--border);background:var(--surface);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-muted);font-size:16px}
+.view-btn.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.tasks-container{display:flex;flex-direction:column;gap:10px}
+.task-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;display:flex;align-items:flex-start;gap:14px;transition:all .15s;border-left:3px solid transparent}
+.task-card:hover{border-color:var(--text-dim);border-left-color:var(--accent)}
+.task-card.status-done{opacity:.6}
+.task-card.status-done .task-title{text-decoration:line-through;color:var(--text-muted)}
+.task-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-top:2px;background:none;color:#000}
+.task-check:hover{border-color:var(--green);background:var(--green-soft)}
+.task-card.status-done .task-check{background:var(--green);border-color:var(--green)}
+.task-body{flex:1;min-width:0}
+.task-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;word-break:break-word}
+.task-desc{font-size:12px;color:var(--text-muted);word-break:break-word}
+.task-meta{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace}
+.tag-priority-high{background:var(--red-soft);color:var(--red)}
+.tag-priority-medium{background:var(--yellow-soft);color:var(--yellow)}
+.tag-priority-low{background:var(--green-soft);color:var(--green)}
+.tag-status-todo{background:var(--blue-soft);color:var(--blue)}
+.tag-status-in-progress{background:var(--yellow-soft);color:var(--yellow)}
+.tag-status-done{background:var(--green-soft);color:var(--green)}
+.tag-category{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border)}
+.task-due{font-size:11px;color:var(--text-dim);margin-left:auto;font-family:'JetBrains Mono',monospace}
+.task-due.overdue{color:var(--red)}
+.task-actions{display:flex;gap:6px;align-items:flex-start;flex-shrink:0}
+.icon-btn{padding:5px 8px;border-radius:var(--radius-sm);background:none;border:1px solid transparent;cursor:pointer;color:var(--text-dim);font-size:14px}
+.icon-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border)}
+.icon-btn.del:hover{background:var(--red-soft);color:var(--red);border-color:var(--red)}
+.kanban-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.kanban-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.kanban-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-weight:600;font-size:13px}
+.kanban-header .col-count{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;font-family:'JetBrains Mono',monospace}
+.col-todo .kanban-header{border-top:3px solid var(--blue)}
+.col-todo .col-count{background:var(--blue-soft);color:var(--blue)}
+.col-progress .kanban-header{border-top:3px solid var(--yellow)}
+.col-progress .col-count{background:var(--yellow-soft);color:var(--yellow)}
+.col-done .kanban-header{border-top:3px solid var(--green)}
+.col-done .col-count{background:var(--green-soft);color:var(--green)}
+.kanban-tasks{padding:12px;display:flex;flex-direction:column;gap:8px;min-height:80px}
+.kanban-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer}
+.kanban-card:hover{border-color:var(--accent)}
+.kanban-card .task-title{font-size:13px;margin-bottom:6px}
+.empty{text-align:center;padding:60px 20px;color:var(--text-muted)}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty h3{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.modal-overlay.hidden{display:none}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;box-shadow:var(--shadow);overflow:hidden}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
+.modal-header h2{font-size:16px;font-weight:700}
+.close-btn{background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:20px;padding:2px 6px;border-radius:var(--radius-sm)}
+.close-btn:hover{background:var(--surface2);color:var(--text)}
+.modal-body{padding:24px;display:flex;flex-direction:column;gap:16px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group textarea,.form-group select{padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:inherit;font-size:13px;width:100%}
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toast-wrap{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:200}
+.toast{padding:12px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:var(--shadow);max-width:300px}
+.toast.success{background:#1a2e20;border:1px solid var(--green);color:var(--green)}
+.toast.error{background:#2e1a1a;border:1px solid var(--red);color:var(--red)}
+.loader{text-align:center;padding:40px;color:var(--text-muted);font-size:13px}
+.spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+@media (max-width:900px){.sidebar{width:200px}.main{margin-left:200px;padding:20px}.stats-grid{grid-template-columns:repeat(2,1fr)}.kanban-grid{grid-template-columns:1fr}}
+@media (max-width:640px){.sidebar{display:none}.main{margin-left:0;padding:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-icon">✦</div>TaskFlow</div>
+    <nav class="nav-section">
+      <label>Views</label>
+      <button class="nav-item active" data-filter="all" id="nav-all">◈ All Tasks<span class="nav-badge" id="badge-all">0</span></button>
+      <button class="nav-item" data-filter="todo" id="nav-todo">○ To Do<span class="nav-badge" id="badge-todo">0</span></button>
+      <button class="nav-item" data-filter="in-progress" id="nav-in-progress">◑ In Progress<span class="nav-badge" id="badge-in-progress">0</span></button>
+      <button class="nav-item" data-filter="done" id="nav-done">● Done<span class="nav-badge" id="badge-done">0</span></button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="header">
+      <div class="header-left">
+        <h1>My Tasks</h1>
+        <p id="date-string"></p>
+      </div>
+      <button class="btn btn-primary" id="btn-new-task">+ New Task</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card total"><div class="stat-label">Total</div><div class="stat-value" id="stat-total">0</div></div>
+      <div class="stat-card todo"><div class="stat-label">To Do</div><div class="stat-value" id="stat-todo">0</div></div>
+      <div class="stat-card progress"><div class="stat-label">In Progress</div><div class="stat-value" id="stat-progress">0</div></div>
+      <div class="stat-card done"><div class="stat-label">Done</div><div class="stat-value" id="stat-done">0</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search-wrap"><input type="text" id="search-input" placeholder="Search tasks…" /></div>
+      <select id="filter-priority">
+        <option value="">All Priorities</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <select id="sort-by">
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+        <option value="due">Due Date</option>
+        <option value="priority">Priority</option>
+      </select>
+      <div class="view-toggle">
+        <button class="view-btn active" id="view-list" title="List view">☰</button>
+        <button class="view-btn" id="view-kanban" title="Kanban view">⊞</button>
+      </div>
+    </div>
+
+    <div id="tasks-area"></div>
+  </main>
+</div>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">New Task</h2>
+      <button class="close-btn" id="btn-close-modal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>Title *</label><input type="text" id="f-title" placeholder="What needs to be done?" /></div>
+      <div class="form-group"><label>Description</label><textarea id="f-desc" placeholder="Add more details…"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Priority</label>
+          <select id="f-priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+        </div>
+        <div class="form-group"><label>Status</label>
+          <select id="f-status"><option value="todo">To Do</option><option value="in-progress">In Progress</option><option value="done">Done</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Category</label><input type="text" id="f-category" placeholder="e.g. Work, Personal" value="General" /></div>
+        <div class="form-group"><label>Due Date</label><input type="date" id="f-due" /></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-save">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API = window.location.origin + '/api/tasks';
+  var state = {
+    tasks: [],
+    editId: null,
+    filter: 'all',
+    view: 'list',
+    searchTimer: null
+  };
+
+  // ── DATE ──
+  document.getElementById('date-string').textContent = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  // ── HELPERS ──
+  function esc(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function toast(msg, type) {
+    var wrap = document.getElementById('toast-wrap');
+    var el = document.createElement('div');
+    el.className = 'toast ' + (type || 'success');
+    el.textContent = msg;
+    wrap.appendChild(el);
+    window.setTimeout(function () { el.remove(); }, 3000);
+  }
+
+  function statusLabel(s) {
+    if (s === 'todo') return 'To Do';
+    if (s === 'in-progress') return 'In Progress';
+    if (s === 'done') return 'Done';
+    return s;
+  }
+
+  // ── API CALLS ──
+  function apiGet(url) {
+    return fetch(url).then(function (r) { return r.json(); });
+  }
+  function apiSend(url, method, body) {
+    return fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) { return r.json(); });
+  }
+  function apiDelete(url) {
+    return fetch(url, { method: 'DELETE' }).then(function (r) { return r.json(); });
+  }
+
+  // ── LOAD ──
+  function loadTasks() {
+    var area = document.getElementById('tasks-area');
+    area.innerHTML = '<div class="loader"><div class="spinner"></div>Loading tasks…</div>';
+
+    var params = new URLSearchParams();
+    var search = document.getElementById('search-input').value.trim();
+    var priority = document.getElementById('filter-priority').value;
+
+    if (search) params.set('search', search);
+    if (priority) params.set('priority', priority);
+    if (state.filter === 'todo' || state.filter === 'in-progress' || state.filter === 'done') {
+      params.set('status', state.filter);
+    }
+
+    apiGet(API + '?' + params.toString())
+      .then(function (json) {
+        if (!json.success) throw new Error(json.error || 'Failed to load tasks');
+        state.tasks = json.data || [];
+        sortTasks();
+        renderTasks();
+      })
+      .catch(function (err) {
+        area.innerHTML = '<div class="empty"><div class="empty-icon">⚠</div><h3>Could not load tasks</h3><p>' + esc(err.message) + '</p></div>';
+      });
+  }
+
+  function loadStats() {
+    apiGet(API + '/meta/stats')
+      .then(function (json) {
+        if (!json.success) return;
+        var d = json.data;
+        document.getElementById('stat-total').textContent = d.total;
+        document.getElementById('stat-todo').textContent = d.todo;
+        document.getElementById('stat-progress').textContent = d.inProgress;
+        document.getElementById('stat-done').textContent = d.done;
+        document.getElementById('badge-all').textContent = d.total;
+        document.getElementById('badge-todo').textContent = d.todo;
+        document.getElementById('badge-in-progress').textContent = d.inProgress;
+        document.getElementById('badge-done').textContent = d.done;
+      })
+      .catch(function () { /* silent */ });
+  }
+
+  function sortTasks() {
+    var sort = document.getElementById('sort-by').value;
+    var pOrder = { high: 0, medium: 1, low: 2 };
+    state.tasks.sort(function (a, b) {
+      if (sort === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+      if (sort === 'due') {
+        var da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+        var db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+        return da - db;
+      }
+      if (sort === 'priority') return pOrder[a.priority] - pOrder[b.priority];
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }
+
+  // ── RENDER ──
+  function renderTasks() {
+    var area = document.getElementById('tasks-area');
+    if (!state.tasks.length) {
+      area.innerHTML = '<div class="empty"><div class="empty-icon">✦</div><h3>No tasks here</h3><p>Create your first task to get started.</p></div>';
+      return;
+    }
+    area.innerHTML = state.view === 'kanban' ? renderKanban() : renderList();
+    attachTaskCardEvents();
+  }
+
+  function renderList() {
+    return '<div class="tasks-container">' + state.tasks.map(taskCardHtml).join('') + '</div>';
+  }
+
+  function renderKanban() {
+    var cols = { todo: [], 'in-progress': [], done: [] };
+    state.tasks.forEach(function (t) { if (cols[t.status]) cols[t.status].push(t); });
+    function colHtml(list) {
+      return list.length ? list.map(kanbanCardHtml).join('') :
+        '<div style="color:var(--text-dim);font-size:12px;text-align:center;padding:16px;">No tasks</div>';
+    }
+    return '<div class="kanban-grid">' +
+      '<div class="kanban-col col-todo"><div class="kanban-header"><span>To Do</span><span class="col-count">' + cols.todo.length + '</span></div><div class="kanban-tasks">' + colHtml(cols.todo) + '</div></div>' +
+      '<div class="kanban-col col-progress"><div class="kanban-header"><span>In Progress</span><span class="col-count">' + cols['in-progress'].length + '</span></div><div class="kanban-tasks">' + colHtml(cols['in-progress']) + '</div></div>' +
+      '<div class="kanban-col col-done"><div class="kanban-header"><span>Done</span><span class="col-count">' + cols.done.length + '</span></div><div class="kanban-tasks">' + colHtml(cols.done) + '</div></div>' +
+      '</div>';
+  }
+
+  function taskCardHtml(t) {
+    var due = t.dueDate ? new Date(t.dueDate) : null;
+    var overdue = due && due < new Date() && t.status !== 'done';
+    var dueStr = due ? due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    var check = t.status === 'done' ? '✓' : '';
+    return '<div class="task-card status-' + t.status + '" data-id="' + t._id + '">' +
+      '<button class="task-check" data-action="toggle" data-id="' + t._id + '" data-status="' + t.status + '" title="Toggle done">' + check + '</button>' +
+      '<div class="task-body">' +
+        '<div class="task-title">' + esc(t.title) + '</div>' +
+        (t.description ? '<div class="task-desc">' + esc(t.description) + '</div>' : '') +
+        '<div class="task-meta">' +
+          '<span class="tag tag-priority-' + t.priority + '">' + t.priority + '</span>' +
+          '<span class="tag tag-status-' + t.status + '">' + statusLabel(t.status) + '</span>' +
+          '<span class="tag tag-category">' + esc(t.category) + '</span>' +
+          (dueStr ? '<span class="task-due' + (overdue ? ' overdue' : '') + '">📅 ' + dueStr + (overdue ? ' · overdue' : '') + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="task-actions">' +
+        '<button class="icon-btn" data-action="edit" data-id="' + t._id + '" title="Edit">✎</button>' +
+        '<button class="icon-btn del" data-action="delete" data-id="' + t._id + '" title="Delete">✕</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function kanbanCardHtml(t) {
+    var due = t.dueDate ? new Date(t.dueDate) : null;
+    var overdue = due && due < new Date() && t.status !== 'done';
+    var dueStr = due ? due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    return '<div class="kanban-card" data-action="edit" data-id="' + t._id + '">' +
+      '<div class="task-title">' + esc(t.title) + '</div>' +
+      '<div class="task-meta">' +
+        '<span class="tag tag-priority-' + t.priority + '">' + t.priority + '</span>' +
+        (dueStr ? '<span class="task-due' + (overdue ? ' overdue' : '') + '" style="margin-left:auto">📅 ' + dueStr + '</span>' : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  function attachTaskCardEvents() {
+    var area = document.getElementById('tasks-area');
+    var nodes = area.querySelectorAll('[data-action]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].addEventListener('click', onTaskActionClick);
+    }
+  }
+
+  function onTaskActionClick(evt) {
+    var el = evt.currentTarget;
+    var action = el.getAttribute('data-action');
+    var id = el.getAttribute('data-id');
+    if (action === 'toggle') {
+      toggleDone(id, el.getAttribute('data-status'));
+    } else if (action === 'edit') {
+      openEdit(id);
+    } else if (action === 'delete') {
+      evt.stopPropagation();
+      deleteTask(id);
+    }
+  }
+
+  // ── ACTIONS ──
+  function toggleDone(id, currentStatus) {
+    var next = currentStatus === 'done' ? 'todo' : 'done';
+    apiSend(API + '/' + id + '/status', 'PATCH', { status: next })
+      .then(function (json) {
+        if (!json.success) throw new Error(json.error || 'Could not update status');
+        toast(next === 'done' ? 'Task marked done' : 'Task reopened', 'success');
+        loadTasks();
+        loadStats();
+      })
+      .catch(function (err) { toast(err.message, 'error'); });
+  }
+
+  function deleteTask(id) {
+    if (!window.confirm('Delete this task?')) return;
+    apiDelete(API + '/' + id)
+      .then(function (json) {
+        if (!json.success) throw new Error(json.error || 'Could not delete task');
+        toast('Task deleted', 'success');
+        loadTasks();
+        loadStats();
+      })
+      .catch(function (err) { toast(err.message, 'error'); });
+  }
+
+  function saveTask() {
+    var titleEl = document.getElementById('f-title');
+    var title = titleEl.value.trim();
+    if (!title) {
+      toast('Title is required', 'error');
+      titleEl.focus();
+      return;
+    }
+
+    var body = {
+      title: title,
+      description: document.getElementById('f-desc').value.trim(),
+      priority: document.getElementById('f-priority').value,
+      status: document.getElementById('f-status').value,
+      category: document.getElementById('f-category').value.trim() || 'General',
+      dueDate: document.getElementById('f-due').value || null
+    };
+
+    var url = state.editId ? (API + '/' + state.editId) : API;
+    var method = state.editId ? 'PUT' : 'POST';
+
+    var saveBtn = document.getElementById('btn-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    apiSend(url, method, body)
+      .then(function (json) {
+        if (!json.success) throw new Error(json.error || 'Could not save task');
+        toast(state.editId ? 'Task updated' : 'Task created', 'success');
+        closeModal();
+        loadTasks();
+        loadStats();
+      })
+      .catch(function (err) {
+        toast(err.message, 'error');
+      })
+      .then(function () {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Task';
+      });
+  }
+
+  // ── MODAL ──
+  function openModal() {
+    state.editId = null;
+    document.getElementById('modal-title').textContent = 'New Task';
+    document.getElementById('f-title').value = '';
+    document.getElementById('f-desc').value = '';
+    document.getElementById('f-priority').value = 'medium';
+    document.getElementById('f-status').value = 'todo';
+    document.getElementById('f-category').value = 'General';
+    document.getElementById('f-due').value = '';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+    document.getElementById('f-title').focus();
+  }
+
+  function openEdit(id) {
+    var t = null;
+    for (var i = 0; i < state.tasks.length; i++) {
+      if (state.tasks[i]._id === id) { t = state.tasks[i]; break; }
+    }
+    if (!t) return;
+    state.editId = id;
+    document.getElementById('modal-title').textContent = 'Edit Task';
+    document.getElementById('f-title').value = t.title;
+    document.getElementById('f-desc').value = t.description || '';
+    document.getElementById('f-priority').value = t.priority;
+    document.getElementById('f-status').value = t.status;
+    document.getElementById('f-category').value = t.category || 'General';
+    document.getElementById('f-due').value = t.dueDate ? t.dueDate.substring(0, 10) : '';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+    state.editId = null;
+  }
+
+  // ── FILTER / VIEW ──
+  function setFilter(f) {
+    state.filter = f;
+    var items = document.querySelectorAll('.nav-item');
+    for (var i = 0; i < items.length; i++) items[i].classList.remove('active');
+    var target = document.getElementById('nav-' + f) || document.getElementById('nav-all');
+    if (target) target.classList.add('active');
+    loadTasks();
+  }
+
+  function setView(v) {
+    state.view = v;
+    document.getElementById('view-list').classList.toggle('active', v === 'list');
+    document.getElementById('view-kanban').classList.toggle('active', v === 'kanban');
+    renderTasks();
+  }
+
+  // ── WIRE UP EVENTS ──
+  document.getElementById('btn-new-task').addEventListener('click', openModal);
+  document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+  document.getElementById('btn-cancel').addEventListener('click', closeModal);
+  document.getElementById('btn-save').addEventListener('click', saveTask);
+
+  document.getElementById('nav-all').addEventListener('click', function () { setFilter('all'); });
+  document.getElementById('nav-todo').addEventListener('click', function () { setFilter('todo'); });
+  document.getElementById('nav-in-progress').addEventListener('click', function () { setFilter('in-progress'); });
+  document.getElementById('nav-done').addEventListener('click', function () { setFilter('done'); });
+
+  document.getElementById('view-list').addEventListener('click', function () { setView('list'); });
+  document.getElementById('view-kanban').addEventListener('click', function () { setView('kanban'); });
+
+  document.getElementById('filter-priority').addEventListener('change', loadTasks);
+  document.getElementById('sort-by').addEventListener('change', function () { sortTasks(); renderTasks(); });
+
+  document.getElementById('search-input').addEventListener('input', function () {
+    window.clearTimeout(state.searchTimer);
+    state.searchTimer = window.setTimeout(loadTasks, 350);
+  });
+
+  document.getElementById('modal-overlay').addEventListener('click', function (evt) {
+    if (evt.target === document.getElementById('modal-overlay')) closeModal();
+  });
+
+  document.addEventListener('keydown', function (evt) {
+    if (evt.key === 'Escape') closeModal();
+    if (evt.key === 'Enter' &&
+        !document.getElementById('modal-overlay').classList.contains('hidden') &&
+        document.activeElement && document.activeElement.tagName !== 'TEXTAREA') {
+      evt.preventDefault();
+      saveTask();
+    }
+  });
+
+  // ── INIT ──
+  loadTasks();
+  loadStats();
+})();
+</script>
+</body>
+</html>
