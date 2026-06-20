@@ -3,7 +3,7 @@
 Full-stack task manager: HTML/CSS/JS frontend + Node.js/Express backend + MongoDB.
 
 ## Folder structure
-```
+```  
 back-end/
 ├── .env
 ├── server.js
